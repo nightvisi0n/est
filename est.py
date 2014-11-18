@@ -8,7 +8,7 @@ __version__ = '1.0'
 import sys
 import threading
 import time
-import estUpload
+import est_upload
 import argparse
 import getpass
 from colorama import Fore, Style
@@ -39,7 +39,7 @@ class Spinner(threading.Thread):
         self.keeprunning = False
 
 
-est = estUpload.ESTUpload()
+est = est_upload.ESTUpload()
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
 subparsers = parser.add_subparsers()
 
