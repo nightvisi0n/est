@@ -20,6 +20,6 @@ setup(
     author_email='dev@jneureuther.de',
     description='A console interface for Exercise Submission Tool (https://est.informatik.uni-erlangen.de)',
     long_description=long_description,
-    install_requires=['est_upload', 'requests', 'python-magic', 'beautifulsoup4'],
+    install_requires=['est_upload', 'requests', 'python-magic', 'beautifulsoup4', 'colorama'],
     scripts=['est']
 )
