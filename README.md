@@ -8,7 +8,7 @@ Installation
 
 * download latest version: `wget https://github.com/jneureuther/est/archive/master.zip`
 * unzip downloaded file: `unzip master.zip`
-* run: `./setup.py install`
+* run: `sudo ./setup.py install`
 
 Usage
 -----
