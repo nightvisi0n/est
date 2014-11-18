@@ -1,3 +1,9 @@
-debian/
 .idea/
+build/
+dist/
+*.egg-info/
+debian/
 *.pyc
+.directory
+MANIFEST
+README.txt

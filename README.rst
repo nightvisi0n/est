@@ -1,13 +1,19 @@
 est
 ===
 
-Console interface for Exercise Submission Tool (https://est.informatik.uni-erlangen.de/)
+A console interface for Exercise Submission Tool (https://est.informatik.uni-erlangen.de/)
+
+Installation
+------------
+
+* download latest version: `wget https://github.com/jneureuther/est/archive/master.zip`
+* unzip downloaded file: `unzip master.zip`
+* run: `./setup.py install`
 
 Usage
 -----
 
 ```shell
-./est.py
 usage: est [-h] {login,search,submit,status} ...
 
 Console Interface to Exercise Submission Tool
@@ -28,7 +34,7 @@ Example
 
 Submit a File named FooBar.java to EST:
 ```shell
-./est.py submit FooBar.java
+est submit FooBar.java
 Console Interface to Exercise Submission Tool | Rev1.0
 Current EST version is supported.
 User: john_doe
@@ -43,6 +49,7 @@ Password:
 Dependencies
 ------------
 * python2.7
+* est_upload
 * python-requests
 * python-colorama
 * python-bs4
