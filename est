@@ -12,6 +12,9 @@ import est_upload
 import argparse
 import getpass
 import os.path
+import codecs
+from ConfigParser import ConfigParser
+from os.path import expanduser
 from colorama import Fore, Style
 
 
@@ -41,6 +44,8 @@ class Spinner(threading.Thread):
 
 
 est = est_upload.ESTUpload()
+
+#init argparse
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
 subparsers = parser.add_subparsers()
 
@@ -76,40 +81,60 @@ status_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose
 
 args = parser.parse_args()
 
-print(Fore.YELLOW +
-      'Console Interface to Exercise Submission Tool | Rev' + __version__)
-check_est_version = est.check_est_version()
-if check_est_version is True:
-    print('Current EST version is supported.' + Fore.RESET)
-elif check_est_version in '-1':
-    print(Fore.RESET + Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-          'Cannot access est. Please check your internet connection!')
-    sys.exit(1)
-else:
-    print(Fore.RESET + Fore.RED + 'Current EST version ('
-          + check_est_version.split(' ')[-1] + ') is NOT supported!' + Fore.RESET)
-    sys.exit(1)
+
+def print_head():
+    print(Fore.YELLOW +
+          'Console Interface to Exercise Submission Tool | Rev' + __version__)
+    check_est_version = est.check_est_version()
+    if check_est_version is True:
+        print('Current EST version is supported.' + Fore.RESET)
+    elif check_est_version in '-1':
+        print(Fore.RESET + Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+              'Cannot access est. Please check your internet connection!')
+        sys.exit(1)
+    else:
+        print(Fore.RESET + Fore.RED + 'Current EST version ('
+              + check_est_version.split(' ')[-1] + ') is NOT supported!' + Fore.RESET)
+        sys.exit(1)
 
 
-def authenticate():
-    if args.user is not None:
-        auth_success = est.authenticate(args.user, getpass.getpass())
-        if auth_success is True:
-            print('[i] Successfully signed in with user ' + args.user + '!')
-        else:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
-            sys.exit(1)
-    elif os.path.isfile(filename):
-        
+#authentificate with ether username from args or credentials from stdin or from config file
+def authenticate(mode=0):
+    user = ''
+    passwd = ''
+    if (args.user is not None and mode == 0) or mode == 1:
+        user = args.user
+        passwd = getpass.getpass()
+        # auth_success = est.authenticate(args.user, getpass.getpass())
+        # if auth_success is True:
+        #     print('[i] Successfully signed in with user ' + args.user + '!')
+        # else:
+        #     print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
+        #     sys.exit(1)
+    elif (os.path.isfile(expanduser("~") + "/.est.ini") and mode == 0) or mode == 2:
+        try:
+            cfg = ConfigParser({})
+            cfg.readfp(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
+            user = cfg.get('auth', 'user')
+            passwd = cfg.get('auth', 'password')
+        except IOError:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + "Failed to read config file.")
+            authenticate(3)
+            return
+        except (ConfigParser.NoSectionError, ConfigParser.Error, ConfigParser.ParsingError):
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                  "Failed to read config from file.")
+            authenticate(3)
+            return
     else:
         user = raw_input('User: ')
         passwd = getpass.getpass()
-        auth_success = est.authenticate(user, passwd)
-        if auth_success is True:
-            print('[i] Successfully signed in with user ' + user + '!')
-        else:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
-            sys.exit(1)
+    auth_success = est.authenticate(user, passwd)
+    if auth_success is True:
+        print('[i] Successfully signed in with user ' + user + '!')
+    else:
+        print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
+        sys.exit(1)
 
 
 #prints the status in stdout and returns, if status is ok
@@ -243,6 +268,10 @@ def status(files, waiting=False):
             continue
     return has_errors
 
+
+print_head()
+
+authenticate()
 
 lecture_ids = est.get_lecture_ids()
 
