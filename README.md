@@ -21,12 +21,14 @@ Console Interface to Exercise Submission Tool
 positional arguments:
   {login,search,submit,status}
     login               login on est
-    search              search a file on est
-    submit              submit a file on est
-    status              check the status of a given file
+    search              search files on est
+    submit              submit files on est
+    status              check the status of a given file(s)
 
 optional arguments:
   -h, --help            show this help message and exit
+
+usage: est [-h] {login,search,submit,status} ...
 ```
 
 Example
