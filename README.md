@@ -27,8 +27,6 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
-
-usage: est [-h] {login,search,submit,status} ...
 ```
 
 Example
