@@ -15,7 +15,7 @@ Usage
 -----
 
 ```shell
-usage: est [-h] {login,search,submit,status} ...
+usage: est [-h] [-v] {login,search,submit,status} ...
 
 Console Interface to Exercise Submission Tool
 
@@ -28,6 +28,7 @@ positional arguments:
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
 ```
 
 Example
@@ -51,10 +52,12 @@ Dependencies
 ------------
 * python2.7
 * est_upload
-* python-requests
-* python-colorama
-* python-bs4
+* python-requests (2.3.0)
 * python-magic
+* python-bs4
+* python-colorama
+* python-configparser
+* python-argcomplete
 
 License
 -------
