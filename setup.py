@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# PYTHON_ARGCOMPLETE_OK
 
 from setuptools import setup, find_packages
 from codecs import open
@@ -20,6 +21,6 @@ setup(
     author_email='dev@jneureuther.de',
     description='A console interface for Exercise Submission Tool (https://est.informatik.uni-erlangen.de)',
     long_description=long_description,
-    install_requires=['est_upload', 'requests', 'python-magic', 'beautifulsoup4', 'colorama', 'ConfigParser'],
+    install_requires=['est_upload', 'requests==2.3.0', 'python-magic', 'beautifulsoup4', 'colorama', 'ConfigParser', 'argcomplete'],
     scripts=['est']
 )

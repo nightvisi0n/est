@@ -9,6 +9,7 @@ Installation
 * download latest version: `wget https://github.com/jneureuther/est/archive/master.zip`
 * unzip downloaded file: `unzip master.zip`
 * run: `sudo ./setup.py install`
+* if you want to use the tab completion, you have to activate it as described [here](https://github.com/kislyuk/argcomplete#activating-global-completion).
 
 Usage
 -----
