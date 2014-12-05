@@ -51,7 +51,7 @@ Password:
 Dependencies
 ------------
 * python2.7
-* est_upload
+* (https://github.com/sedrubal/est_upload)
 * python-requests (2.3.0)
 * python-magic
 * python-bs4

@@ -56,12 +56,14 @@ login_parser = subparsers.add_parser('login', help='login on est')
 login_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                           default=False, help='show debugging information')
+login_parser.set_defaults(which='login')
 
 search_parser = subparsers.add_parser('search', help='search files on est')
 search_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+search_parser.set_defaults(which='search')
 
 submit_parser = subparsers.add_parser('submit', help='submit files on est')
 submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
@@ -70,6 +72,7 @@ submit_parser.add_argument('-g', '--group-submission-code', action='store', dest
                            default=0, help='submit with group_submission_code')
 submit_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+submit_parser.set_defaults(which='submit')
 
 status_parser = subparsers.add_parser('status', help='check the status of a given file(s)')
 status_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
@@ -77,8 +80,17 @@ status_parser.add_argument('-u', '--user', action='store', dest='user', help='us
 status_parser.add_argument('-s', action='store', dest='status', default=0)
 status_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+status_parser.set_defaults(which='status')
+
+code_parser = subparsers.add_parser('group-submission-code', help='get your group submission code for a specific file')
+code_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
+code_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
+code_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
+                         default=False, help='show debugging information')
+code_parser.set_defaults(which='group-submission-code')
 
 argcomplete.autocomplete(parser)
+
 args = parser.parse_args()
 
 
@@ -195,21 +207,21 @@ def search(files):
 
 
 #does est submit <filenames>
-def submit(files):
+def submit(files, files_group_submission_code=0):
     has_errors = False
     for f in files:
         (lec_id, lec_name, file_id) = check_file(f)
         if lec_id != -1:
             spinner = Spinner('Uploading ' + f.split('/')[-1] + '..')
             spinner.start()
-            sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), args.group_submission_code)
+            sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), files_group_submission_code)
             spinner.stop()
             print('')
             if sub_suc == 1:
                 print('[i] Successfully uploaded ' + f.split('/')[-1] + ' to ' + lec_name)
-                if args.group_submission_code is not 0:
+                if files_group_submission_code is not 0:
                     print('[i] Submission together with: '
-                          + est.get_submission_with(args.group_submission_code, str(lec_id)).split('(')[0].strip())
+                          + est.get_submission_with(files_group_submission_code, str(lec_id)).split('(')[0].strip())
             elif sub_suc == 2:
                 print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
                       'File ' + f.split('/')[-1] + ' not found on est in lectures!')
@@ -261,15 +273,46 @@ def status(files, waiting=False):
     return has_errors
 
 
+#does est group_submission_code
+def group_submission_code(files):
+    has_errors = False
+    for f in files:
+        (lec_id, lec_name, file_id) = search_file_est(f)
+        if lec_id == -1:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            has_errors = True
+            continue
+        gsc = est.get_group_submission_code(f, lec_id)
+        if gsc == '':
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'No group submission code found for file ' + f.split('/')[-1]
+                                            + ' in group submissions!')
+            has_errors = True
+            continue
+        else:
+            print('[i] group submission code for file ' + f.split('/')[-1] + ' is:')
+            print('[i] ' + str(gsc))
+    return has_errors
+
+
 print_head()
 
 authenticate()
 
 lecture_ids = est.get_lecture_ids()
 
-if hasattr(args, 'file') and not hasattr(args, 'group_submission_code') and not hasattr(args, 'status'):
-    sys.exit(1 if search(args.file) else 0)
-elif hasattr(args, 'group_submission_code'):
-    sys.exit(1 if submit(args.file) else 0)
-elif hasattr(args, 'status'):
-    sys.exit(1 if status(args.file) else 0)
+
+if hasattr(args, 'which'):
+    if args.which is 'search' and hasattr(args, 'file'):
+        sys.exit(1 if search(args.file) else 0)
+    elif args.which is 'submit' and hasattr(args, 'file'):
+        sys.exit(1 if submit(args.file) else 0)
+    elif args.which is 'status' and hasattr(args, 'file'):
+        sys.exit(1 if status(args.file) else 0)
+    elif args.which is 'group-submission-code' and hasattr(args, 'file'):
+        sys.exit(1 if group_submission_code(args.file) else 0)
+    elif args.which is 'login' and not hasattr(args, 'file'):
+        sys.exit(0)  # if login was unsuccessful, the program exited before
+
+sys.exit(1)
