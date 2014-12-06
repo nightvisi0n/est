@@ -212,6 +212,7 @@ def search(files):
 #does est submit <filenames>
 def submit(files, files_group_submission_code=0):
     has_errors = False
+    print("[i] Group Submission Code is: " + str(files_group_submission_code))
     for f in files:
         (lec_id, lec_name, file_id) = check_file(f)
         if lec_id != -1:
@@ -310,7 +311,10 @@ if hasattr(args, 'which'):
     if args.which is 'search' and hasattr(args, 'file'):
         sys.exit(1 if search(args.file) else 0)
     elif args.which is 'submit' and hasattr(args, 'file'):
-        sys.exit(1 if submit(args.file) else 0)
+        if hasattr(args, "group_submission_code"):
+            sys.exit(1 if submit(args.file, args.group_submission_code) else 0)
+        else:
+            sys.exit(1 if submit(args.file) else 0)
     elif args.which is 'status' and hasattr(args, 'file'):
         sys.exit(1 if status(args.file) else 0)
     elif args.which is 'group-submission-code' and hasattr(args, 'file'):
