@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: UTF-8 -*-
+# PYTHON_ARGCOMPLETE_OK
 
 __author__ = 'jneureuther'
 __license__ = 'CC BY-SA 4.0'
@@ -10,7 +11,12 @@ import threading
 import time
 import est_upload
 import argparse
+import argcomplete
 import getpass
+import os.path
+import codecs
+import ConfigParser
+from os.path import expanduser
 from colorama import Fore, Style
 
 
@@ -40,139 +46,233 @@ class Spinner(threading.Thread):
 
 
 est = est_upload.ESTUpload()
+
+#init argparse
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
+parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 subparsers = parser.add_subparsers()
 
 login_parser = subparsers.add_parser('login', help='login on est')
 login_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-login_parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                           default=False, help='show debugging information')
 
-search_parser = subparsers.add_parser('search', help='search a file on est')
-search_parser.add_argument('file', action='store', type=str, help='path to file to search')
+search_parser = subparsers.add_parser('search', help='search files on est')
+search_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-search_parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 
-submit_parser = subparsers.add_parser('submit', help='submit a file on est')
-submit_parser.add_argument('file', action='store', type=str, help='path to file to search')
+submit_parser = subparsers.add_parser('submit', help='submit files on est')
+submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 submit_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 submit_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
                            default=0, help='submit with group_submission_code')
-submit_parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 submit_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 
-status_parser = subparsers.add_parser('status', help='check the status of a given file')
-status_parser.add_argument('file', action='store', type=str, help='path to file to search')
+status_parser = subparsers.add_parser('status', help='check the status of a given file(s)')
+status_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 status_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-status_parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 status_parser.add_argument('-s', action='store', dest='status', default=0)
 status_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 
-results = parser.parse_args()
+argcomplete.autocomplete(parser)
+args = parser.parse_args()
 
-print(Fore.YELLOW +
-      'Console Interface to Exercise Submission Tool | Rev' + __version__)
-check_est_version = est.check_est_version()
-if check_est_version is True:
-    print('Current EST version is supported.' + Fore.RESET)
-elif check_est_version in '-1':
-    print(Fore.RESET + Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + 'Cannot access est. Please check your internet connection!')
-    sys.exit(1)
-else:
-    print(Fore.RESET + Fore.RED + 'Current EST version ('
-          + check_est_version.split(' ')[-1] + ') is NOT supported!' + Fore.RESET)
-    sys.exit(1)
 
-if results.user is not None:
-    retV = est.authenticate(results.user, getpass.getpass())
-    if retV is True:
-        print('[i] Successfully signed in with user ' + results.user + '!')
-    else:
-        print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + retV)
+def print_head():
+    print(Fore.YELLOW +
+          'Console Interface to Exercise Submission Tool | Rev' + __version__)
+    check_est_version = est.check_est_version()
+    if check_est_version is True:
+        print('Current EST version is supported.' + Fore.RESET)
+    elif check_est_version in '-1':
+        print(Fore.RESET + Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+              'Cannot access est. Please check your internet connection!')
         sys.exit(1)
-else:
-    user = raw_input('User: ')
-    passwd = getpass.getpass()
-    retV = est.authenticate(user, passwd)
-    if retV is True:
+    else:
+        print(Fore.RESET + Fore.RED + 'Current EST version ('
+              + check_est_version.split(' ')[-1] + ') is NOT supported!' + Fore.RESET)
+        sys.exit(1)
+
+
+#authentificate with ether username from args or credentials from stdin or from config file
+def authenticate(mode=0):
+    if (args.user is not None and mode == 0) or mode == 1:
+        user = args.user
+        passwd = getpass.getpass()
+    elif (os.path.isfile(expanduser("~") + "/.est.ini") and mode == 0) or mode == 2:
+        try:
+            cfg = ConfigParser.ConfigParser({})
+            cfg.readfp(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
+            user = cfg.get('auth', 'user')
+            passwd = cfg.get('auth', 'password')
+        except IOError:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + "Failed to read config file.")
+            authenticate(3)
+            return
+        except (ConfigParser.NoSectionError, ConfigParser.Error, ConfigParser.ParsingError):
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                  "Failed to read config from file.")
+            authenticate(3)
+            return
+    else:
+        user = raw_input('User: ')
+        passwd = getpass.getpass()
+    auth_success = est.authenticate(user, passwd)
+    if auth_success is True:
         print('[i] Successfully signed in with user ' + user + '!')
     else:
-        print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + retV)
+        print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
         sys.exit(1)
+
+
+#prints the status in stdout and returns, if status is ok
+def print_status(est_status):
+    if "Submitted files don't compile" in est_status:
+        print(Fore.RED + Style.BRIGHT + '[✗] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        return 1
+    elif "No file submitted" in est_status:
+        print(Fore.RED + Style.BRIGHT + '[⩝] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        return 1
+    elif "Error in given test case" in est_status:
+        print(Fore.YELLOW + Style.BRIGHT + '[!] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        return 1
+    elif "All files submitted" in est_status or "Test is OK for given test case" in est_status:
+        print(Fore.GREEN + Style.BRIGHT + '[✓] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        return 0
+    else:
+        print('[i] ' + est_status + '.')
+        return 0
+
+
+#checks if a file is worth to submit and returns a triple, containing
+#the lecture id, where the file should be submitted,
+#the name of the lecture
+#and the file id.
+#On errors, it returns a triple with negative numbers and prints a message
+def check_file(filename):
+    if os.path.isfile(filename):
+        est_trip = search_file_est(filename)
+        if est_trip == (-1, "", -1):
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'File ' + filename.split('/')[-1] + ' not found on est in lectures!')
+            return -1, -1, -1
+        else:
+            return est_trip
+    else:
+        print('[i] File ' + filename + ' not found on pc.')
+        return -2, -2, -2
+
+
+#returns a triple, containing
+#the lecture id, where the file should be submitted,
+#the name of the lecture
+#and the file id.
+#If the file does not exist on est it returns (-1, "", -1)
+def search_file_est(filename):
+    for index, lec_id in enumerate(lecture_ids):
+        if lec_id.isdigit():
+            search_res = est.search_file(filename.split('/')[-1], lec_id)
+            if search_res == 2:
+                continue
+            else:
+                return str(lec_id), lecture_ids[int(index) + 1], search_res
+    return -1, "", -1  # no lecture found
+
+
+#does est search <filenames>
+def search(files):
+    has_errors = False
+    for f in files:
+        (lec_id, lec_name, file_id) = search_file_est(f.split('/')[-1])
+        if lec_id == -1:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            has_errors = True
+        else:
+            print('[i] File found in lecture ' + lec_name + ', file id: ' + file_id + '.')
+    return 1 if has_errors else 0
+
+
+#does est submit <filenames>
+def submit(files):
+    has_errors = False
+    for f in files:
+        (lec_id, lec_name, file_id) = check_file(f)
+        if lec_id != -1:
+            spinner = Spinner('Uploading ' + f.split('/')[-1] + '..')
+            spinner.start()
+            sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), args.group_submission_code)
+            spinner.stop()
+            print('')
+            if sub_suc == 1:
+                print('[i] Successfully uploaded ' + f.split('/')[-1] + ' to ' + lec_name)
+                if args.group_submission_code is not 0:
+                    print('[i] Submission together with: '
+                          + est.get_submission_with(args.group_submission_code, str(lec_id)).split('(')[0].strip())
+            elif sub_suc == 2:
+                print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                      'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+                has_errors = True
+                continue
+            elif sub_suc == 3:
+                print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                      'File is empty!')
+                has_errors = True
+            else:
+                print('[i] ' + sub_suc)
+
+            status({f}, True)
+        else:
+            has_errors = True
+    return has_errors
+
+
+#does est stats <filenames>
+def status(files, waiting=False):
+    has_errors = False
+    for f in files:
+        (lec_id, lec_name, file_id) = search_file_est(f)
+        if lec_id == -1:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            has_errors = True
+            continue
+        if waiting:
+            spinner2 = Spinner('Waiting for test result..')
+            spinner2.start()
+            submit_status = est.check_status(f.split('/')[-1], str(lec_id))
+            while submit_status == 'Waiting for test result':
+                time.sleep(5)
+                submit_status = est.check_status(f.split('/')[-1], str(lec_id))
+            spinner2.stop()
+            print('')
+        else:
+            submit_status = est.check_status(f.split('/')[-1], str(lec_id))
+        if submit_status is not None:
+            print('[i] status for ' + f.split('/')[-1] + ':')
+            has_errors |= print_status(submit_status)
+            continue
+        else:
+            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            has_errors = True
+            continue
+    return has_errors
+
+
+print_head()
+
+authenticate()
 
 lecture_ids = est.get_lecture_ids()
 
-if hasattr(results, 'file') and not hasattr(results, 'group_submission_code') and not hasattr(results, 'status'):
-    for index, id in enumerate(lecture_ids):
-        if id.isdigit():
-            retV = est.search_file(results.file.split('/')[-1], id)
-            if retV == 2:
-                print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                      'File ' + results.file.split('/')[-1] + ' not found on est!')
-                sys.exit(1)
-            else:
-                print('[i] File found in lecture ' + lecture_ids[index + 1] + ', file id: ' + retV + '.')
-                sys.exit(0)
-
-if hasattr(results, 'group_submission_code'):
-    for index, id in enumerate(lecture_ids):
-        if id.isdigit():
-            if est.search_file(results.file.split('/')[-1], id) is not 2:
-                spinner = Spinner('Uploading..')
-                spinner.start()
-                retV = est.submit_file(results.file.split('/')[-1], results.file, id, results.group_submission_code)
-                spinner.stop()
-                if retV == 1:
-                    print('')
-                    print('[i] Successfully uploaded ' + results.file.split('/')[-1] + ' to ' + lecture_ids[index + 1])
-                    if results.group_submission_code is not 0:
-                        print('[i] Submission together with: '
-                              + est.get_submission_with(results.group_submission_code, id).split('(')[0].strip())
-                elif retV == 2:
-                    print('')
-                    print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                          'File ' + results.file.split('/')[-1] + ' not found on est in lectures!')
-                    sys.exit(1)
-                elif retV == 3:
-                    print('')
-                    print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                          'File is empty!')
-                    sys.exit(1)
-                else:
-                    print('')
-                    print('[i] ' + retV)
-                spinner2 = Spinner('Waiting for test result..')
-                spinner2.start()
-                status = est.check_status(results.file.split('/')[-1], id)
-                while status == 'Waiting for test result':
-                    time.sleep(5)
-                    status = est.check_status(results.file.split('/')[-1], id)
-                spinner2.stop()
-                if "Submitted files don't compile" in status:
-                    print('')
-                    print(Fore.RED + Style.BRIGHT + '[✗] ' + Style.RESET_ALL + Fore.RESET + status + '.')
-                elif "Error in given test case" in status:
-                    print('')
-                    print(Fore.YELLOW + Style.BRIGHT + '[!] ' + Style.RESET_ALL + Fore.RESET + status + '.')
-                elif "All files submitted" in status or "Test is OK for given test case" in status:
-                    print('')
-                    print(Fore.GREEN + Style.BRIGHT + '[✓] ' + Style.RESET_ALL + Fore.RESET + status + '.')
-                else:
-                    print('')
-                    print('[i] ' + status + '.')
-                sys.exit(0)
-    print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-          'File ' + results.file.split('/')[-1] + ' not found on est!')
-    sys.exit(1)
-
-if hasattr(results, 'status'):
-    for id in lecture_ids:
-        if id.isdigit():
-            status = est.check_status(results.file.split('/')[-1], id)
-            if status is not None:
-                print('[i] Status for file ' + results.file.split('/')[-1] + ': ' + status + '.')
+if hasattr(args, 'file') and not hasattr(args, 'group_submission_code') and not hasattr(args, 'status'):
+    sys.exit(1 if search(args.file) else 0)
+elif hasattr(args, 'group_submission_code'):
+    sys.exit(1 if submit(args.file) else 0)
+elif hasattr(args, 'status'):
+    sys.exit(1 if status(args.file) else 0)

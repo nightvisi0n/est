@@ -9,24 +9,26 @@ Installation
 * download latest version: `wget https://github.com/jneureuther/est/archive/master.zip`
 * unzip downloaded file: `unzip master.zip`
 * run: `sudo ./setup.py install`
+* if you want to use the tab completion, you have to activate it as described [here](https://github.com/kislyuk/argcomplete#activating-global-completion).
 
 Usage
 -----
 
 ```shell
-usage: est [-h] {login,search,submit,status} ...
+usage: est [-h] [-v] {login,search,submit,status} ...
 
 Console Interface to Exercise Submission Tool
 
 positional arguments:
   {login,search,submit,status}
     login               login on est
-    search              search a file on est
-    submit              submit a file on est
-    status              check the status of a given file
+    search              search files on est
+    submit              submit files on est
+    status              check the status of a given file(s)
 
 optional arguments:
   -h, --help            show this help message and exit
+  -v, --version         show program's version number and exit
 ```
 
 Example
@@ -50,10 +52,12 @@ Dependencies
 ------------
 * python2.7
 * est_upload
-* python-requests
-* python-colorama
-* python-bs4
+* python-requests (2.3.0)
 * python-magic
+* python-bs4
+* python-colorama
+* python-configparser
+* python-argcomplete
 
 License
 -------
