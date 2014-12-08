@@ -4,7 +4,7 @@
 
 __author__ = 'jneureuther'
 __license__ = 'CC BY-SA 4.0'
-__version__ = '1.0'
+__version__ = '1.1'
 
 import sys
 import threading
@@ -57,13 +57,13 @@ login_parser.add_argument('-u', '--user', action='store', dest='user', help='use
 login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                           default=False, help='show debugging information')
 
-search_parser = subparsers.add_parser('search', help='search files on est')
+search_parser = subparsers.add_parser('search', help='search a file(s) on est')
 search_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 
-submit_parser = subparsers.add_parser('submit', help='submit files on est')
+submit_parser = subparsers.add_parser('submit', help='submit a file(s) on est')
 submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 submit_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 submit_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',

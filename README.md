@@ -9,12 +9,12 @@ Installation
 * download latest version: `wget https://github.com/jneureuther/est/archive/master.zip`
 * unzip downloaded file: `unzip master.zip`
 * run: `sudo ./setup.py install`
-* if you want to use the tab completion, you have to activate it as described [here](https://github.com/kislyuk/argcomplete#activating-global-completion).
+* run: `sudo activate-global-python-argcomplete` to enable argument completion
 
 Usage
 -----
 
-```shell
+```
 usage: est [-h] [-v] {login,search,submit,status} ...
 
 Console Interface to Exercise Submission Tool
@@ -22,8 +22,8 @@ Console Interface to Exercise Submission Tool
 positional arguments:
   {login,search,submit,status}
     login               login on est
-    search              search files on est
-    submit              submit files on est
+    search              search a file(s) on est
+    submit              submit a file(s) on est
     status              check the status of a given file(s)
 
 optional arguments:
