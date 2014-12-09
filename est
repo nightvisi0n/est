@@ -2,7 +2,7 @@
 # -*- coding: UTF-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 
-__author__ = 'jneureuther'
+__author__ = 'jneureuther, sedrubal'
 __license__ = 'CC BY-SA 4.0'
 __version__ = '1.1'
 
@@ -13,7 +13,7 @@ import est_upload
 import argparse
 import argcomplete
 import getpass
-import os.path
+import os
 import codecs
 import ConfigParser
 from os.path import expanduser
@@ -108,7 +108,7 @@ def authenticate(mode=0):
             cfg = ConfigParser.ConfigParser({})
             cfg.readfp(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
             user = cfg.get('auth', 'user')
-            passwd = cfg.get('auth', 'password')
+            passwd = cfg.get('auth', 'passwd')
         except IOError:
             print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + "Failed to read config file.")
             authenticate(3)
@@ -124,6 +124,17 @@ def authenticate(mode=0):
     auth_success = est.authenticate(user, passwd)
     if auth_success is True:
         print('[i] Successfully signed in with user ' + user + '!')
+        if not os.path.isfile(expanduser("~") + "/.est.ini"):
+            save = raw_input('Store credentials unencrypted under ' + expanduser('~') + '/.est.ini? [y/N] ')
+            save.replace('\n', '')
+            if 'y' in save or 'Y' in save:
+                cfile = open(expanduser("~") + "/.est.ini", 'w')
+                os.chmod(expanduser("~") + "/.est.ini", 0700)
+                cfile.write("[auth]\n")
+                cfile.write("user=" + user + '\n')
+                cfile.write("passwd=" + passwd + '\n')
+                print('Credentials stored under ' + expanduser('~') + '/.est.ini.')
+                cfile.close()
     else:
         print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
         sys.exit(1)
