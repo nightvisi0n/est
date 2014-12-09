@@ -274,16 +274,16 @@ def status(files, waiting=False):
             continue
     return has_errors
 
-
-print_head()
-
-authenticate()
-
-lecture_ids = est.get_lecture_ids()
-
-if hasattr(args, 'file') and not hasattr(args, 'group_submission_code') and not hasattr(args, 'status'):
-    sys.exit(1 if search(args.file) else 0)
-elif hasattr(args, 'group_submission_code'):
-    sys.exit(1 if submit(args.file) else 0)
-elif hasattr(args, 'status'):
-    sys.exit(1 if status(args.file) else 0)
+if __name__ == '__main__':
+    try:
+        print_head()
+        authenticate()
+        lecture_ids = est.get_lecture_ids()
+        if hasattr(args, 'file') and not hasattr(args, 'group_submission_code') and not hasattr(args, 'status'):
+            sys.exit(1 if search(args.file) else 0)
+        elif hasattr(args, 'group_submission_code'):
+            sys.exit(1 if submit(args.file) else 0)
+        elif hasattr(args, 'status'):
+            sys.exit(1 if status(args.file) else 0)
+    except KeyboardInterrupt:
+        print(Fore.RED + Style.BRIGHT + '\nAborted.' + Style.RESET_ALL + Fore.RESET)
