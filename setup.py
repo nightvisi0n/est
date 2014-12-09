@@ -13,7 +13,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='est',
-    version='1.0.0',
+    version='1.1.0',
     packages=find_packages(exclude=['contrib', 'docs', 'tests*']),
     url='https://github.com/jneureuther/est',
     license='CC BY-SA 4.0',
@@ -21,6 +21,6 @@ setup(
     author_email='dev@jneureuther.de',
     description='A console interface for Exercise Submission Tool (https://est.informatik.uni-erlangen.de)',
     long_description=long_description,
-    install_requires=['est_upload', 'requests==2.3.0', 'python-magic', 'beautifulsoup4', 'colorama', 'ConfigParser', 'argcomplete'],
+    install_requires=['libest', 'requests==2.3.0', 'python-magic', 'beautifulsoup4', 'colorama', 'ConfigParser', 'argcomplete'],
     scripts=['est']
 )

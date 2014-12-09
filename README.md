@@ -35,7 +35,7 @@ Example
 -------
 
 Submit a File named FooBar.java to EST:
-```shell
+```
 est submit FooBar.java
 Console Interface to Exercise Submission Tool | Rev1.0
 Current EST version is supported.
@@ -51,7 +51,7 @@ Password:
 Dependencies
 ------------
 * python2.7
-* est_upload
+* libest
 * python-requests (2.3.0)
 * python-magic
 * python-bs4

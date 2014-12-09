@@ -9,7 +9,7 @@ __version__ = '1.1'
 import sys
 import threading
 import time
-import est_upload
+import libest
 import argparse
 import argcomplete
 import getpass
@@ -45,7 +45,7 @@ class Spinner(threading.Thread):
         self.keeprunning = False
 
 
-est = est_upload.ESTUpload()
+est = libest.libest()
 
 #init argparse
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
