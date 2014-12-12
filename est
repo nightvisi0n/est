@@ -2,18 +2,18 @@
 # -*- coding: UTF-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 
-__author__ = 'jneureuther'
+__author__ = 'jneureuther, sedrubal'
 __license__ = 'CC BY-SA 4.0'
-__version__ = '1.0'
+__version__ = '1.1'
 
 import sys
 import threading
 import time
-import est_upload
+import libest
 import argparse
 import argcomplete
 import getpass
-import os.path
+import os
 import codecs
 import ConfigParser
 from os.path import expanduser
@@ -45,7 +45,7 @@ class Spinner(threading.Thread):
         self.keeprunning = False
 
 
-est = est_upload.ESTUpload()
+est = libest.libest()
 
 #init argparse
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
@@ -58,14 +58,14 @@ login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose'
                           default=False, help='show debugging information')
 login_parser.set_defaults(which='login')
 
-search_parser = subparsers.add_parser('search', help='search files on est')
+search_parser = subparsers.add_parser('search', help='search a file(s) on est')
 search_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 search_parser.set_defaults(which='search')
 
-submit_parser = subparsers.add_parser('submit', help='submit files on est')
+submit_parser = subparsers.add_parser('submit', help='submit a file(s) on est')
 submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 submit_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 submit_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
@@ -120,7 +120,7 @@ def authenticate(mode=0):
             cfg = ConfigParser.ConfigParser({})
             cfg.readfp(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
             user = cfg.get('auth', 'user')
-            passwd = cfg.get('auth', 'password')
+            passwd = cfg.get('auth', 'passwd')
         except IOError:
             print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + "Failed to read config file.")
             authenticate(3)
@@ -136,6 +136,17 @@ def authenticate(mode=0):
     auth_success = est.authenticate(user, passwd)
     if auth_success is True:
         print('[i] Successfully signed in with user ' + user + '!')
+        if not os.path.isfile(expanduser("~") + "/.est.ini"):
+            save = raw_input('Store credentials unencrypted under ' + expanduser('~') + '/.est.ini? [y/N] ')
+            save.replace('\n', '')
+            if 'y' in save or 'Y' in save:
+                cfile = open(expanduser("~") + "/.est.ini", 'w')
+                os.chmod(expanduser("~") + "/.est.ini", 0700)
+                cfile.write("[auth]\n")
+                cfile.write("user=" + user + '\n')
+                cfile.write("passwd=" + passwd + '\n')
+                print('Credentials stored under ' + expanduser('~') + '/.est.ini.')
+                cfile.close()
     else:
         print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
         sys.exit(1)
@@ -303,26 +314,25 @@ def group_submission_code(files):
     return has_errors
 
 
-print_head()
-
-authenticate()
-
-lecture_ids = est.get_lecture_ids()
-
-
-if hasattr(args, 'which'):
-    if args.which is 'search' and hasattr(args, 'file'):
-        sys.exit(1 if search(args.file) else 0)
-    elif args.which is 'submit' and hasattr(args, 'file'):
-        if hasattr(args, "group_submission_code"):
-            sys.exit(1 if submit(args.file, args.group_submission_code) else 0)
-        else:
-            sys.exit(1 if submit(args.file) else 0)
-    elif args.which is 'status' and hasattr(args, 'file'):
-        sys.exit(1 if status(args.file) else 0)
-    elif args.which is 'group-submission-code' and hasattr(args, 'file'):
-        sys.exit(1 if group_submission_code(args.file) else 0)
-    elif args.which is 'login' and not hasattr(args, 'file'):
-        sys.exit(0)  # if login was unsuccessful, the program exited before
-
-sys.exit(1)
+if __name__ == '__main__':
+    try:
+        print_head()
+        authenticate()
+        lecture_ids = est.get_lecture_ids()
+        if hasattr(args, 'which'):
+            if args.which is 'search' and hasattr(args, 'file'):
+                sys.exit(1 if search(args.file) else 0)
+            elif args.which is 'submit' and hasattr(args, 'file'):
+                if hasattr(args, "group_submission_code"):
+                    sys.exit(1 if submit(args.file, args.group_submission_code) else 0)
+                else:
+                    sys.exit(1 if submit(args.file) else 0)
+            elif args.which is 'status' and hasattr(args, 'file'):
+                sys.exit(1 if status(args.file) else 0)
+            elif args.which is 'group-submission-code' and hasattr(args, 'file'):
+                sys.exit(1 if group_submission_code(args.file) else 0)
+            elif args.which is 'login' and not hasattr(args, 'file'):
+                sys.exit(0)  # if login was unsuccessful, the program exited before
+            sys.exit(1)
+    except KeyboardInterrupt:
+        print(Fore.RED + Style.BRIGHT + '\nAborted.' + Style.RESET_ALL + Fore.RESET)
