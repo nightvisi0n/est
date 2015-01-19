@@ -47,7 +47,7 @@ class Spinner(threading.Thread):
 
 est = libest.libest()
 
-#init argparse
+#<editor-fold desc="argparse">
 parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
 parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 subparsers = parser.add_subparsers()
@@ -69,7 +69,7 @@ submit_parser = subparsers.add_parser('submit', help='submit a file(s) on est')
 submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
 submit_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 submit_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
-                           default=0, help='submit with group_submission_code')
+                           help='submit with group_submission_code')
 submit_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
 submit_parser.set_defaults(which='submit')
@@ -92,6 +92,7 @@ code_parser.set_defaults(which='group-submission-code')
 argcomplete.autocomplete(parser)
 
 args = parser.parse_args()
+#</editor-fold>
 
 
 def print_head():
@@ -221,9 +222,9 @@ def search(files):
 
 
 #does est submit <filenames>
-def submit(files, files_group_submission_code=0):
+def submit(files, files_group_submission_code=None):
     has_errors = False
-    if not files_group_submission_code is 0:
+    if not files_group_submission_code is None:
         print("[i] Group Submission Code is: " + str(files_group_submission_code))
     else:
         print("[i] Single Submission")
@@ -232,12 +233,15 @@ def submit(files, files_group_submission_code=0):
         if lec_id != -1:
             spinner = Spinner('Uploading ' + f.split('/')[-1] + '..')
             spinner.start()
-            sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), files_group_submission_code)
+            if files_group_submission_code is None:
+                sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id))
+            else:
+                sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), files_group_submission_code)
             spinner.stop()
             print('')
             if sub_suc == 1:
                 print('[i] Successfully uploaded ' + f.split('/')[-1] + ' to ' + lec_name)
-                if files_group_submission_code is not 0:
+                if files_group_submission_code is not None:
                     print('[i] Submission together with: '
                           + est.get_submission_with(files_group_submission_code, str(lec_id)).split('(')[0].strip())
             elif sub_suc == 2:
@@ -314,6 +318,7 @@ def group_submission_code(files):
     return has_errors
 
 
+#<editor-fold desc="main">
 if __name__ == '__main__':
     try:
         print_head()
@@ -336,3 +341,4 @@ if __name__ == '__main__':
             sys.exit(1)
     except KeyboardInterrupt:
         print(Fore.RED + Style.BRIGHT + '\nAborted.' + Style.RESET_ALL + Fore.RESET)
+#</editor-fold>
