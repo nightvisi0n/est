@@ -50,12 +50,11 @@ Password:
 
 Dependencies
 ------------
-* python2.7
-* libest
+* python2.7 (python3 is comming)
+* [libest](https://github.com/jneureuther/libest)
 * python-requests (2.3.0)
 * python-magic
 * python-bs4
-* python-colorama
 * python-configparser
 * python-argcomplete
 
