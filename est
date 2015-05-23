@@ -4,51 +4,79 @@
 
 __author__ = 'jneureuther, sedrubal'
 __license__ = 'CC BY-SA 4.0'
-__version__ = '1.1'
+__version__ = '1.2'
 
-import sys
-import threading
-import time
-import libest
-import argparse
-import argcomplete
-import getpass
-import os
+from libest import LibEst
+from sys import stdout, version_info
+from threading import Thread
+from time import sleep
+from argparse import ArgumentParser
+from argcomplete import autocomplete
+from getpass import getpass
 import codecs
-import ConfigParser
-from os.path import expanduser
-from colorama import Fore, Style
+from os import chmod
+from os.path import expanduser, isfile
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
+
+if version_info[0] == 2:
+    # Python 2 adjustments
+    term_input = raw_input
+    ConfigParser.read_conf = ConfigParser.readfp
+else:
+    # Python 3 adjustments
+    term_input = input
+    ConfigParser.read_conf = ConfigParser.read_file
 
 
-class Spinner(threading.Thread):
+class Spinner(Thread):
+    """
+    Class for doing a job in the background, while the foreground is showing an animation
+    """
     chars = ["\\", "|", "/", "-"]
+    # chars = ["Oooo", "oOoo", "ooOo", "oooO"]
     index = 0
-    keeprunning = True
+    keep_running = True
 
     def __init__(self, text):
         super(Spinner, self).__init__()
         self.text = text
 
     def run(self):
-        while self.keeprunning:
+        """
+        starts the animation
+        :type self: Spinner
+        """
+        while self.keep_running:
             self.printing('[i] ' + self.chars[self.index % len(self.chars)] + ' ' + self.text)
-            time.sleep(0.1)
+            sleep(0.1)
             self.index += 1
 
     @staticmethod
     def printing(data):
-        sys.stdout.write("\r\x1b[K"+data.__str__())
-        sys.stdout.flush()
+        """
+        Prints data to stdout and flushes stdout
+        :type data: str
+        :param data: data to write
+        """
+        stdout.write("\r\x1b[K" + data.__str__())
+        stdout.flush()
 
     def stop(self):
-        self.printing('[i] ✓ ' + self.text)
-        self.keeprunning = False
+        """
+        Prints the stop message and stops the animation
+        :type self: Spinner
+        """
+        self.printing('[✓] ' + self.text)
+        self.keep_running = False
 
 
-est = libest.libest()
+est = LibEst()
 
-#<editor-fold desc="argparse">
-parser = argparse.ArgumentParser(description='Console Interface to Exercise Submission Tool')
+# <editor-fold desc="argparse">
+parser = ArgumentParser(description='Console Interface to Exercise Submission Tool')
 parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 subparsers = parser.add_subparsers()
 
@@ -56,6 +84,8 @@ login_parser = subparsers.add_parser('login', help='login on est')
 login_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                           default=False, help='show debugging information')
+login_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
+                          default=True, help="disable ANSI color output")
 login_parser.set_defaults(which='login')
 
 search_parser = subparsers.add_parser('search', help='search a file(s) on est')
@@ -63,6 +93,8 @@ search_parser.add_argument('file', action='store', type=str, help='path to file(
 search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+search_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
+                           default=True, help="disable ANSI color output")
 search_parser.set_defaults(which='search')
 
 submit_parser = subparsers.add_parser('submit', help='submit a file(s) on est')
@@ -72,6 +104,8 @@ submit_parser.add_argument('-g', '--group-submission-code', action='store', dest
                            help='submit with group_submission_code')
 submit_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+submit_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
+                           default=True, help="disable ANSI color output")
 submit_parser.set_defaults(which='submit')
 
 status_parser = subparsers.add_parser('status', help='check the status of a given file(s)')
@@ -80,6 +114,8 @@ status_parser.add_argument('-u', '--user', action='store', dest='user', help='us
 status_parser.add_argument('-s', action='store', dest='status', default=0)
 status_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                            default=False, help='show debugging information')
+status_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
+                           default=True, help="disable ANSI color output")
 status_parser.set_defaults(which='status')
 
 code_parser = subparsers.add_parser('group-submission-code', help='get your group submission code for a specific file')
@@ -87,116 +123,190 @@ code_parser.add_argument('file', action='store', type=str, help='path to file(s)
 code_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 code_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
                          default=False, help='show debugging information')
+code_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
+                         default=True, help="disable ANSI color output")
 code_parser.set_defaults(which='group-submission-code')
 
-argcomplete.autocomplete(parser)
+autocomplete(parser)
 
 args = parser.parse_args()
-#</editor-fold>
+# </editor-fold>
+
+
+def colorize(color, message):
+    """
+    Adds ANSI colors to the message if args.colors == True
+    :type color: str
+    :type message: str
+    :param color: Colors to add to the message
+    :param message: Message which should be displayed colored
+    :return: the colored message
+    """
+    if args.colors:
+        return "%s%s%s" % (color, message, Colors.RESET)
+    else:
+        return colorize_off(message)
+
+
+def colorize_off(message):
+    """
+    Removes ANSI colors from the message and ignores the colors
+    :type message: str
+    :param message: the message which should be freed of ANSI colors and which should not be displayed with the color
+    :return: a blank message
+    """
+    for color in [Colors.RESET, Colors.BOLD, Colors.ITALIC, Colors.UNDERLINE,
+                  Colors.RED, Colors.GREEN, Colors.YELLOW, Colors.BLUE,
+                  Colors.MAGENTA, Colors.CYAN, Colors.WHITE]:
+        message = message.replace(color, '')
+    return message
+
+
+class Colors:
+    """
+    chosen ANSI colors
+    """
+    RESET = '\033[0m'
+    BOLD = '\033[1m'
+    ITALIC = '\033[3m'
+    UNDERLINE = '\033[4m'
+    # these are light term fore colors
+    # normal colors have code \033[3x and back colors have \033[4x or \033[10x
+    RED = '\033[91m'
+    GREEN = '\033[32m'  # dark green looks better
+    YELLOW = '\033[33m'  # dark yellow looks better
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    CYAN = '\033[96m'
+    WHITE = '\033[97m'
 
 
 def print_head():
-    print(Fore.YELLOW +
-          'Console Interface to Exercise Submission Tool | Rev' + __version__)
+    """
+    Prints the standard head
+    """
+    print(colorize(Colors.YELLOW, 'Console Interface to Exercise Submission Tool | Rev' + __version__))
     check_est_version = est.check_est_version()
     if check_est_version is True:
-        print('Current EST version is supported.' + Fore.RESET)
+        print(colorize(Colors.GREEN, '[i] ') + 'Current EST version is supported.')
     elif check_est_version in '-1':
-        print(Fore.RESET + Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-              'Cannot access est. Please check your internet connection!')
-        sys.exit(1)
+        print(colorize(Colors.RED, '[✗] ') + 'Cannot access est. Please check your internet connection!')
+        exit(1)
     else:
-        print(Fore.RESET + Fore.RED + 'Current EST version ('
-              + check_est_version.split(' ')[-1] + ') is NOT supported!' + Fore.RESET)
-        sys.exit(1)
+        print(colorize(Colors.RED, '[✗] ') + 'Current EST version ({v}) is NOT supported!'.
+              format(v=check_est_version.split(' ')[-1]))
+        exit(1)
 
 
-#authentificate with ether username from args or credentials from stdin or from config file
 def authenticate(mode=0):
+    """
+    Authenticate with ether username from args or credentials from stdin or from config file
+    :type mode: int
+    :param mode: 0: if possible read user and password from est.ini else interactive,
+    1: read user from arguments and password interactive, 2: read user & password from est.ini, else: interactive
+    :return:
+    """
     if (args.user is not None and mode == 0) or mode == 1:
         user = args.user
-        passwd = getpass.getpass()
-    elif (os.path.isfile(expanduser("~") + "/.est.ini") and mode == 0) or mode == 2:
+        passwd = getpass()
+    elif (isfile(expanduser("~") + "/.est.ini") and mode == 0) or mode == 2:
         try:
-            cfg = ConfigParser.ConfigParser({})
-            cfg.readfp(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
+            cfg = ConfigParser({})
+            cfg.read_conf(codecs.open(expanduser("~") + "/.est.ini", 'r', 'utf8'))
             user = cfg.get('auth', 'user')
             passwd = cfg.get('auth', 'passwd')
         except IOError:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + "Failed to read config file.")
+            print(colorize(Colors.RED, '[✗] ') + "Failed to read config file.")
             authenticate(3)
             return
-        except (ConfigParser.NoSectionError, ConfigParser.Error, ConfigParser.ParsingError):
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                  "Failed to read config from file.")
+        except Exception:
+            print(colorize(Colors.RED, '[✗] ') + "Failed to read config from file.")
             authenticate(3)
             return
     else:
-        user = raw_input('User: ')
-        passwd = getpass.getpass()
-    auth_success = est.authenticate(user, passwd)
-    if auth_success is True:
-        print('[i] Successfully signed in with user ' + user + '!')
-        if not os.path.isfile(expanduser("~") + "/.est.ini"):
-            save = raw_input('Store credentials unencrypted under ' + expanduser('~') + '/.est.ini? [y/N] ')
+        user = term_input('User: ')
+        passwd = getpass()
+    auth_status = est.authenticate(user, passwd)
+    if auth_status is True:
+        print(colorize(Colors.GREEN, '[i] ') + 'Successfully signed in with user "{u}"!'.format(u=user))
+        if not isfile(expanduser("~") + "/.est.ini"):
+            save = term_input('Store credentials unencrypted under "{home}/.est.ini"? [y/N] '.
+                              format(home=expanduser('~')))
             save.replace('\n', '')
             if 'y' in save or 'Y' in save:
-                cfile = open(expanduser("~") + "/.est.ini", 'w')
-                os.chmod(expanduser("~") + "/.est.ini", 0700)
-                cfile.write("[auth]\n")
-                cfile.write("user=" + user + '\n')
-                cfile.write("passwd=" + passwd + '\n')
-                print('Credentials stored under ' + expanduser('~') + '/.est.ini.')
-                cfile.close()
+                conf_file = open(expanduser("~") + "/.est.ini", 'w')
+                chmod(expanduser("~") + "/.est.ini", 0o700)
+                conf_file.write('[auth]\n')
+                conf_file.write('user={u}\n'.format(u=user))
+                conf_file.write('passwd={passwd}\n'.format(passwd=passwd))
+                conf_file.close()
+                print(colorize(Colors.GREEN, '[i] ') + 'Credentials stored under "{home}/.est.ini"'.
+                      format(home=expanduser('~')))
     else:
-        print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET + auth_success)
-        sys.exit(1)
+        print(colorize(Colors.RED, '[✗] ') + auth_status)
+        exit(1)
 
 
-#prints the status in stdout and returns, if status is ok
 def print_status(est_status):
+    """
+    Prints the status to stdout and returns 0, if status is ok
+    :type est_status: str
+    :param est_status: Status String from est homepage
+    :return: 0 if status is a success message
+    """
     if "Submitted files don't compile" in est_status:
-        print(Fore.RED + Style.BRIGHT + '[✗] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        print(colorize(Colors.RED, '[✗] ') + est_status + '.')
         return 1
     elif "No file submitted" in est_status:
-        print(Fore.RED + Style.BRIGHT + '[⩝] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        print(colorize(Colors.RED, '[⩝] ') + est_status + '.')
         return 1
     elif "Error in given test case" in est_status:
-        print(Fore.YELLOW + Style.BRIGHT + '[!] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        print(colorize(Colors.YELLOW, '[!] ') + est_status + '.')
         return 1
     elif "All files submitted" in est_status or "Test is OK for given test case" in est_status:
-        print(Fore.GREEN + Style.BRIGHT + '[✓] ' + Style.RESET_ALL + Fore.RESET + est_status + '.')
+        print(colorize(Colors.GREEN, '[✓] ') + est_status + '.')
         return 0
     else:
         print('[i] ' + est_status + '.')
-        return 0
+        return 1
 
 
-#checks if a file is worth to submit and returns a triple, containing
-#the lecture id, where the file should be submitted,
-#the name of the lecture
-#and the file id.
-#On errors, it returns a triple with negative numbers and prints a message
 def check_file(filename):
-    if os.path.isfile(filename):
+    """
+    Checks if a file is worth to submit and returns a triple, containing
+    the lecture id, where the file should be submitted,
+    the name of the lecture
+    and the file id.
+    On errors, it returns a triple with negative numbers and prints a message
+    :type filename: str
+    :param filename: file to check
+    :return: a triple (lecture_id, name of lecture, file_id) or (-1, -1, -1) if file is not found in remote or
+    (-2, -2, -2) if file is not found locally
+    """
+    if isfile(filename):
         est_trip = search_file_est(filename)
         if est_trip == (-1, "", -1):
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'File ' + filename.split('/')[-1] + ' not found on est in lectures!')
+            print(colorize(Colors.RED, '[✗] ') + 'File "{file}" not found on est in lectures!'.
+                  format(file=filename.split('/')[-1]))
             return -1, -1, -1
         else:
             return est_trip
     else:
-        print('[i] File ' + filename + ' not found on pc.')
+        print(colorize(Colors.RED, '[✗] ') + 'File "{file}" not found on pc.'.format(file=filename))
         return -2, -2, -2
 
 
-#returns a triple, containing
-#the lecture id, where the file should be submitted,
-#the name of the lecture
-#and the file id.
-#If the file does not exist on est it returns (-1, "", -1)
 def search_file_est(filename):
+    """
+    Returns a triple, containing
+    the lecture id, where the file should be submitted,
+    the name of the lecture
+    and the file id.
+    If the file does not exist on est it returns (-1, "", -1)
+    :type filename: str
+    :param filename: The name of the file
+    :return: if the file does not exist on est it returns (-1, "", -1), else (lecture_id, lecture_name, file_id)
+    """
     for index, lec_id in enumerate(lecture_ids):
         if lec_id.isdigit():
             search_res = est.search_file(filename.split('/')[-1], lec_id)
@@ -207,27 +317,40 @@ def search_file_est(filename):
     return -1, "", -1  # no lecture found
 
 
-#does est search <filenames>
 def search(files):
+    """
+    Does `est search <filenames>`
+    :type files: [str]
+    :param files: the names of the file(s) to be searched on est
+    :return: exit status code (0: success, 1: error)
+    """
     has_errors = False
     for f in files:
         (lec_id, lec_name, file_id) = search_file_est(f.split('/')[-1])
         if lec_id == -1:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            print(colorize(Colors.RED, '[✗] ') +
+                  'File "' + f.split('/')[-1] + '" not found on est in lectures!')
             has_errors = True
         else:
             print('[i] File found in lecture ' + lec_name + ', file id: ' + file_id + '.')
     return 1 if has_errors else 0
 
 
-#does est submit <filenames>
 def submit(files, files_group_submission_code=None):
+    """
+    Does `est submit <files>`
+    :type files: [str]
+    :type files_group_submission_code: str
+    :param files: the names of the files to be submitted
+    :param files_group_submission_code: if this is a group submission, this has to be the group submission code,
+    else None
+    :return: exit status code (0: success, 1: error)
+    """
     has_errors = False
-    if not files_group_submission_code is None:
-        print("[i] Group Submission Code is: " + str(files_group_submission_code))
-    else:
+    if files_group_submission_code is None:
         print("[i] Single Submission")
+    else:
+        print("[i] Group Submission Code is: " + str(files_group_submission_code))
     for f in files:
         (lec_id, lec_name, file_id) = check_file(f)
         if lec_id != -1:
@@ -240,17 +363,19 @@ def submit(files, files_group_submission_code=None):
             spinner.stop()
             print('')
             if sub_suc == 1:
-                print('[i] Successfully uploaded ' + f.split('/')[-1] + ' to ' + lec_name)
+                print(colorize(Colors.GREEN, '[i] ') + 'Successfully uploaded "{file}" to "{lecture}"'.
+                      format(file=f.split('/')[-1], lecture=lec_id))
                 if files_group_submission_code is not None:
-                    print('[i] Submission together with: '
-                          + est.get_submission_with(files_group_submission_code, str(lec_id)).split('(')[0].strip())
+                    print('[i] Submission together with: "{partner}"'.
+                          format(partner=est.get_submission_with(files_group_submission_code,
+                                                                 str(lec_id)).split('(')[0].strip()))
             elif sub_suc == 2:
-                print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                      'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+                print(colorize(Colors.RED, '[✗] ') +
+                      'File "' + f.split('/')[-1] + '" not found on est in lectures!')
                 has_errors = True
                 continue
             elif sub_suc == 3:
-                print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
+                print(colorize(Colors.RED, '[✗] ') +
                       'File is empty!')
                 has_errors = True
             else:
@@ -262,14 +387,21 @@ def submit(files, files_group_submission_code=None):
     return has_errors
 
 
-#does est stats <filenames>
 def status(files, waiting=False):
+    """
+    Does `est status <files>`
+    :type files: [str]
+    :type waiting: bool
+    :param files: The files of which the status should be displayed
+    :param waiting: True, if the script should wait while est is testing the file
+    :return: exit status code (0: success, 1: error)
+    """
     has_errors = False
     for f in files:
         (lec_id, lec_name, file_id) = search_file_est(f)
         if lec_id == -1:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            print(colorize(Colors.RED + Colors.BOLD, '[!] ') + 'File "{file}" not found on est in lectures!'.
+                  format(file=f.split('/')[-1]))
             has_errors = True
             continue
         if waiting:
@@ -277,7 +409,7 @@ def status(files, waiting=False):
             spinner2.start()
             submit_status = est.check_status(f.split('/')[-1], str(lec_id))
             while submit_status == 'Waiting for test result':
-                time.sleep(5)
+                sleep(5)
                 submit_status = est.check_status(f.split('/')[-1], str(lec_id))
             spinner2.stop()
             print('')
@@ -288,37 +420,41 @@ def status(files, waiting=False):
             has_errors |= print_status(submit_status)
             continue
         else:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            print(colorize(Colors.YELLOW, '[?] ') + 'Status for "{file}" not found on est in lectures!'.
+                  format(file=f.split('/')[-1]))
             has_errors = True
             continue
     return has_errors
 
 
-#does est group_submission_code
 def group_submission_code(files):
+    """
+    Does `est group_submission_code <files>`
+    :type files: [str]
+    :param files: The files of which the group submission code should be displayed
+    :return: exit status code (0: success, 1: error)
+    """
     has_errors = False
     for f in files:
         (lec_id, lec_name, file_id) = search_file_est(f)
         if lec_id == -1:
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'File ' + f.split('/')[-1] + ' not found on est in lectures!')
+            print(colorize(Colors.RED, '[✗] ') +
+                  'File ' + f.split('/')[-1] + ' not found on est in lectures!')
             has_errors = True
             continue
         gsc = est.get_group_submission_code(f, lec_id)
         if gsc == '':
-            print(Fore.RED + Style.BRIGHT + '[FAIL] ' + Style.RESET_ALL + Fore.RESET +
-                                            'No group submission code found for file ' + f.split('/')[-1]
-                                            + ' in group submissions!')
+            print(colorize(Colors.RED, '[✗] ') + 'No group submission code found for file "' + f.split('/')[-1]
+                  + '" in group submissions!')
             has_errors = True
             continue
         else:
-            print('[i] group submission code for file ' + f.split('/')[-1] + ' is:')
+            print('[i] group submission code for file "' + f.split('/')[-1] + '" is:')
             print('[i] ' + str(gsc))
     return has_errors
 
 
-#<editor-fold desc="main">
+# <editor-fold desc="main">
 if __name__ == '__main__':
     try:
         print_head()
@@ -326,19 +462,19 @@ if __name__ == '__main__':
         lecture_ids = est.get_lecture_ids()
         if hasattr(args, 'which'):
             if args.which is 'search' and hasattr(args, 'file'):
-                sys.exit(1 if search(args.file) else 0)
+                exit(1 if search(args.file) else 0)
             elif args.which is 'submit' and hasattr(args, 'file'):
                 if hasattr(args, "group_submission_code"):
-                    sys.exit(1 if submit(args.file, args.group_submission_code) else 0)
+                    exit(1 if submit(args.file, args.group_submission_code) else 0)
                 else:
-                    sys.exit(1 if submit(args.file) else 0)
+                    exit(1 if submit(args.file) else 0)
             elif args.which is 'status' and hasattr(args, 'file'):
-                sys.exit(1 if status(args.file) else 0)
+                exit(1 if status(args.file) else 0)
             elif args.which is 'group-submission-code' and hasattr(args, 'file'):
-                sys.exit(1 if group_submission_code(args.file) else 0)
+                exit(1 if group_submission_code(args.file) else 0)
             elif args.which is 'login' and not hasattr(args, 'file'):
-                sys.exit(0)  # if login was unsuccessful, the program exited before
-            sys.exit(1)
+                exit(0)  # if login was unsuccessful, the program exited before
+            exit(1)
     except KeyboardInterrupt:
-        print(Fore.RED + Style.BRIGHT + '\nAborted.' + Style.RESET_ALL + Fore.RESET)
-#</editor-fold>
+        print(colorize(Colors.RED, '\nAborted.'))
+# </editor-fold>
