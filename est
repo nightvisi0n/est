@@ -2,6 +2,10 @@
 # -*- coding: UTF-8 -*-
 # PYTHON_ARGCOMPLETE_OK
 
+"""
+A console interface for Exercise Submission Tool (https://est.cs.fau.de/)
+"""
+
 __author__ = 'jneureuther, sedrubal'
 __license__ = 'CC BY-SA 4.0'
 __version__ = '1.2'
@@ -11,11 +15,14 @@ from sys import stdout, version_info
 from threading import Thread
 from time import sleep
 from argparse import ArgumentParser
-from argcomplete import autocomplete
 from getpass import getpass
 import codecs
 from os import chmod
 from os.path import expanduser, isfile
+try:
+    from argcomplete import autocomplete
+except ImportError:
+    print('[i] Please install python-argcomplete')
 try:
     from ConfigParser import ConfigParser
 except ImportError:
@@ -76,58 +83,59 @@ class Spinner(Thread):
 est = LibEst()
 
 # <editor-fold desc="argparse">
-parser = ArgumentParser(description='Console Interface to Exercise Submission Tool')
+parser = ArgumentParser(description=__doc__)
+parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
+parser.add_argument('-q', '--quiet', action='store_true', dest='quiet',
+                    default=False, help='minimize the output')
+parser.add_argument('-nc', '--no-colors', action='store_false', dest='colors',
+                    default=True, help="disable ANSI color output")
 parser.add_argument('-v', '--version', action='version', version='%(prog)s ' + __version__)
 subparsers = parser.add_subparsers()
+subparsers.required = True
 
 login_parser = subparsers.add_parser('login', help='login on est')
-login_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-login_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
-                          default=False, help='show debugging information')
-login_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
-                          default=True, help="disable ANSI color output")
 login_parser.set_defaults(which='login')
+lo_parser = subparsers.add_parser('lo', help='login on est')
+lo_parser.set_defaults(which='login')
 
 search_parser = subparsers.add_parser('search', help='search a file(s) on est')
 search_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
-search_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-search_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
-                           default=False, help='show debugging information')
-search_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
-                           default=True, help="disable ANSI color output")
 search_parser.set_defaults(which='search')
+se_parser = subparsers.add_parser('se', help='search a file(s) on est')
+se_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
+se_parser.set_defaults(which='search')
 
 submit_parser = subparsers.add_parser('submit', help='submit a file(s) on est')
 submit_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
-submit_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
 submit_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
                            help='submit with group_submission_code')
-submit_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
-                           default=False, help='show debugging information')
-submit_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
-                           default=True, help="disable ANSI color output")
+submit_parser.add_argument('-n', '--no-status', action='store_false', dest='status_query',
+                           default=True, help='do not query the status for the submitted file')
 submit_parser.set_defaults(which='submit')
+su_parser = subparsers.add_parser('su', help='submit a file(s) on est')
+su_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
+su_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
+                       help='submit with group_submission_code')
+su_parser.add_argument('-n', '--no-status', action='store_false', dest='status_query',
+                           default=True, help='do not query the status for the submitted file')
+su_parser.set_defaults(which='submit')
 
 status_parser = subparsers.add_parser('status', help='check the status of a given file(s)')
 status_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
-status_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-status_parser.add_argument('-s', action='store', dest='status', default=0)
-status_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
-                           default=False, help='show debugging information')
-status_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
-                           default=True, help="disable ANSI color output")
 status_parser.set_defaults(which='status')
+st_parser = subparsers.add_parser('st', help='check the status of a given file(s)')
+st_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
+st_parser.set_defaults(which='status')
 
 code_parser = subparsers.add_parser('group-submission-code', help='get your group submission code for a specific file')
 code_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
-code_parser.add_argument('-u', '--user', action='store', dest='user', help='username to login')
-code_parser.add_argument('-V', '--verbose', action='store_true', dest='verbose',
-                         default=False, help='show debugging information')
-code_parser.add_argument('-n', '--no-colors', action='store_false', dest='colors',
-                         default=True, help="disable ANSI color output")
 code_parser.set_defaults(which='group-submission-code')
+gsc_parser = subparsers.add_parser('gsc', help='get your group submission code for a specific file')
+gsc_parser.add_argument('file', action='store', type=str, help='path to file(s) to search', nargs='+')
+gsc_parser.set_defaults(which='group-submission-code')
 
-autocomplete(parser)
+if 'autocomplete' in locals():
+    autocomplete(parser)
 
 args = parser.parse_args()
 # </editor-fold>
@@ -185,10 +193,12 @@ def print_head():
     """
     Prints the standard head
     """
-    print(colorize(Colors.YELLOW, 'Console Interface to Exercise Submission Tool | Rev' + __version__))
+    if not args.quiet:
+        print(colorize(Colors.YELLOW, 'Console Interface to Exercise Submission Tool | Rev' + __version__))
     check_est_version = est.check_est_version()
     if check_est_version is True:
-        print(colorize(Colors.GREEN, '[i] ') + 'Current EST version is supported.')
+        if not args.quiet:
+            print(colorize(Colors.GREEN, '[i] ') + 'Current EST version is supported.')
     elif check_est_version in '-1':
         print(colorize(Colors.RED, '[✗] ') + 'Cannot access est. Please check your internet connection!')
         exit(1)
@@ -229,8 +239,8 @@ def authenticate(mode=0):
     auth_status = est.authenticate(user, passwd)
     if auth_status is True:
         print(colorize(Colors.GREEN, '[i] ') + 'Successfully signed in with user "{u}"!'.format(u=user))
-        if not isfile(expanduser("~") + "/.est.ini"):
-            save = term_input('Store credentials unencrypted under "{home}/.est.ini"? [y/N] '.
+        if not isfile(expanduser("~") + "/.est.ini") and not args.quiet:
+            save = term_input('Store credentials ' + colorize(Colors.BOLD, 'unencrypted') + ' under "{home}/.est.ini"? [y/N] '.
                               format(home=expanduser('~')))
             save.replace('\n', '')
             if 'y' in save or 'Y' in save:
@@ -347,21 +357,24 @@ def submit(files, files_group_submission_code=None):
     :return: exit status code (0: success, 1: error)
     """
     has_errors = False
-    if files_group_submission_code is None:
-        print("[i] Single Submission")
-    else:
-        print("[i] Group Submission Code is: " + str(files_group_submission_code))
+    if not args.quiet:
+        if files_group_submission_code is None:
+            print("[i] Single Submission")
+        else:
+            print("[i] Group Submission Code is: " + str(files_group_submission_code))
     for f in files:
         (lec_id, lec_name, file_id) = check_file(f)
         if lec_id != -1:
-            spinner = Spinner('Uploading ' + f.split('/')[-1] + '..')
-            spinner.start()
+            if not args.quiet:
+                spinner = Spinner('Uploading ' + f.split('/')[-1] + '..')
+                spinner.start()
             if files_group_submission_code is None:
                 sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id))
             else:
                 sub_suc = est.submit_file(f.split('/')[-1], f, str(lec_id), files_group_submission_code)
-            spinner.stop()
-            print('')
+            if not args.quiet:
+                spinner.stop()
+                print('')
             if sub_suc == 1:
                 print(colorize(Colors.GREEN, '[i] ') + 'Successfully uploaded "{file}" to "{lecture}"'.
                       format(file=f.split('/')[-1], lecture=lec_id))
@@ -381,7 +394,8 @@ def submit(files, files_group_submission_code=None):
             else:
                 print('[i] ' + sub_suc)
 
-            status({f}, True)
+            if args.status_query:
+                status({f}, True)
         else:
             has_errors = True
     return has_errors
@@ -405,14 +419,16 @@ def status(files, waiting=False):
             has_errors = True
             continue
         if waiting:
-            spinner2 = Spinner('Waiting for test result..')
-            spinner2.start()
+            if not args.quiet:
+                spinner2 = Spinner('Waiting for test result..')
+                spinner2.start()
             submit_status = est.check_status(f.split('/')[-1], str(lec_id))
             while submit_status == 'Waiting for test result':
                 sleep(5)
                 submit_status = est.check_status(f.split('/')[-1], str(lec_id))
-            spinner2.stop()
-            print('')
+            if not args.quiet:
+                spinner2.stop()
+                print('')
         else:
             submit_status = est.check_status(f.split('/')[-1], str(lec_id))
         if submit_status is not None:
@@ -453,7 +469,6 @@ def group_submission_code(files):
             print('[i] ' + str(gsc))
     return has_errors
 
-
 # <editor-fold desc="main">
 if __name__ == '__main__':
     try:
@@ -476,5 +491,6 @@ if __name__ == '__main__':
                 exit(0)  # if login was unsuccessful, the program exited before
             exit(1)
     except KeyboardInterrupt:
-        print(colorize(Colors.RED, '\nAborted.'))
+        if not args.quiet:
+            print(colorize(Colors.RED, '\nAborted.'))
 # </editor-fold>
