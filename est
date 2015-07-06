@@ -76,7 +76,7 @@ class Spinner(Thread):
         Prints the stop message and stops the animation
         :type self: Spinner
         """
-        self.printing('[✓] ' + self.text)
+        self.printing(u'[✓] ' + self.text)
         self.keep_running = False
 
 
@@ -117,7 +117,7 @@ su_parser.add_argument('file', action='store', type=str, help='path to file(s) t
 su_parser.add_argument('-g', '--group-submission-code', action='store', dest='group_submission_code',
                        help='submit with group_submission_code')
 su_parser.add_argument('-n', '--no-status', action='store_false', dest='status_query',
-                           default=True, help='do not query the status for the submitted file')
+                       default=True, help='do not query the status for the submitted file')
 su_parser.set_defaults(which='submit')
 
 status_parser = subparsers.add_parser('status', help='check the status of a given file(s)')
@@ -200,10 +200,10 @@ def print_head():
         if not args.quiet:
             print(colorize(Colors.GREEN, '[i] ') + 'Current EST version is supported.')
     elif check_est_version in '-1':
-        print(colorize(Colors.RED, '[✗] ') + 'Cannot access est. Please check your internet connection!')
+        print(colorize(Colors.RED, u'[✗] ') + 'Cannot access est. Please check your internet connection!')
         exit(1)
     else:
-        print(colorize(Colors.RED, '[✗] ') + 'Current EST version ({v}) is NOT supported!'.
+        print(colorize(Colors.RED, u'[✗] ') + 'Current EST version ({v}) is NOT supported!'.
               format(v=check_est_version.split(' ')[-1]))
         exit(1)
 
@@ -226,11 +226,11 @@ def authenticate(mode=0):
             user = cfg.get('auth', 'user')
             passwd = cfg.get('auth', 'passwd')
         except IOError:
-            print(colorize(Colors.RED, '[✗] ') + "Failed to read config file.")
+            print(colorize(Colors.RED, u'[✗] ') + "Failed to read config file.")
             authenticate(3)
             return
         except Exception:
-            print(colorize(Colors.RED, '[✗] ') + "Failed to read config from file.")
+            print(colorize(Colors.RED, u'[✗] ') + "Failed to read config from file.")
             authenticate(3)
             return
     else:
@@ -253,7 +253,7 @@ def authenticate(mode=0):
                 print(colorize(Colors.GREEN, '[i] ') + 'Credentials stored under "{home}/.est.ini"'.
                       format(home=expanduser('~')))
     else:
-        print(colorize(Colors.RED, '[✗] ') + auth_status)
+        print(colorize(Colors.RED, u'[✗] ') + auth_status)
         exit(1)
 
 
@@ -265,7 +265,7 @@ def print_status(est_status):
     :return: 0 if status is a success message
     """
     if "Submitted files don't compile" in est_status:
-        print(colorize(Colors.RED, '[✗] ') + est_status + '.')
+        print(colorize(Colors.RED, u'[✗] ') + est_status + '.')
         return 1
     elif "No file submitted" in est_status:
         print(colorize(Colors.RED, '[⩝] ') + est_status + '.')
@@ -274,7 +274,7 @@ def print_status(est_status):
         print(colorize(Colors.YELLOW, '[!] ') + est_status + '.')
         return 1
     elif "All files submitted" in est_status or "Test is OK for given test case" in est_status:
-        print(colorize(Colors.GREEN, '[✓] ') + est_status + '.')
+        print(colorize(Colors.GREEN, u'[✓] ') + est_status + '.')
         return 0
     else:
         print('[i] ' + est_status + '.')
@@ -296,13 +296,13 @@ def check_file(filename):
     if isfile(filename):
         est_trip = search_file_est(filename)
         if est_trip == (-1, "", -1):
-            print(colorize(Colors.RED, '[✗] ') + 'File "{file}" not found on est in lectures!'.
+            print(colorize(Colors.RED, u'[✗] ') + 'File "{file}" not found on est in lectures!'.
                   format(file=filename.split('/')[-1]))
             return -1, -1, -1
         else:
             return est_trip
     else:
-        print(colorize(Colors.RED, '[✗] ') + 'File "{file}" not found on pc.'.format(file=filename))
+        print(colorize(Colors.RED, u'[✗] ') + 'File "{file}" not found on pc.'.format(file=filename))
         return -2, -2, -2
 
 
@@ -338,7 +338,7 @@ def search(files):
     for f in files:
         (lec_id, lec_name, file_id) = search_file_est(f.split('/')[-1])
         if lec_id == -1:
-            print(colorize(Colors.RED, '[✗] ') +
+            print(colorize(Colors.RED, u'[✗] ') +
                   'File "' + f.split('/')[-1] + '" not found on est in lectures!')
             has_errors = True
         else:
@@ -454,13 +454,13 @@ def group_submission_code(files):
     for f in files:
         (lec_id, lec_name, file_id) = search_file_est(f)
         if lec_id == -1:
-            print(colorize(Colors.RED, '[✗] ') +
+            print(colorize(Colors.RED, u'[✗] ') +
                   'File ' + f.split('/')[-1] + ' not found on est in lectures!')
             has_errors = True
             continue
         gsc = est.get_group_submission_code(f, lec_id)
         if gsc == '':
-            print(colorize(Colors.RED, '[✗] ') + 'No group submission code found for file "' + f.split('/')[-1]
+            print(colorize(Colors.RED, u'[✗] ') + 'No group submission code found for file "' + f.split('/')[-1]
                   + '" in group submissions!')
             has_errors = True
             continue
