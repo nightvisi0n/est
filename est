@@ -240,12 +240,12 @@ def authenticate(mode=0):
     if auth_status is True:
         print(colorize(Colors.GREEN, '[i] ') + 'Successfully signed in with user "{u}"!'.format(u=user))
         if not isfile(expanduser("~") + "/.est.ini") and not args.quiet:
-            save = term_input('Store credentials ' + colorize(Colors.BOLD, 'unencrypted') + ' under "{home}/.est.ini"? [y/N] '.
-                              format(home=expanduser('~')))
+            save = term_input('Store credentials {unencrypted} under "{home}/.est.ini"? [y/N] '.
+                              format(unencrypted=colorize(Colors.BOLD, 'unencrypted'), home=expanduser('~')))
             save.replace('\n', '')
             if 'y' in save or 'Y' in save:
                 conf_file = open(expanduser("~") + "/.est.ini", 'w')
-                chmod(expanduser("~") + "/.est.ini", 0o700)
+                chmod(expanduser("~") + "/.est.ini", 0o600)
                 conf_file.write('[auth]\n')
                 conf_file.write('user={u}\n'.format(u=user))
                 conf_file.write('passwd={passwd}\n'.format(passwd=passwd))
